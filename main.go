@@ -10,8 +10,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"runtime"
+	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/http2"
@@ -22,6 +23,8 @@ var (
 	addr       = flag.String("addr", "0.0.0.0:80", "addr")
 	url        = flag.String("url", "https://nginx", "url")
 	concurrent = flag.Bool("concurrent", true, "use one client for all goroutines concurrently")
+	jobs       = flag.Int("j", 6, "number of concurrent requests")
+	requests   = flag.Int64("requests", 100, "number of total requests")
 )
 
 func newClient() *http.Client {
@@ -59,16 +62,23 @@ func startServer() {
 
 func startClient() {
 	fmt.Println("client to", *url)
+	fmt.Printf("will do ~%d requests with %d concurrency\n", *requests, *jobs)
 	wg := new(sync.WaitGroup)
+	var count int64
+	var non200count int64
 	var cNetClient = newClient()
-	for i := 0; i < runtime.GOMAXPROCS(-1); i++ {
+	for i := 0; i < *jobs; i++ {
 		wg.Add(1)
 		go func(id int) {
+			defer wg.Done()
 			netClient := cNetClient
 			if !*concurrent {
 				netClient = newClient()
 			}
 			for {
+				if current := atomic.AddInt64(&count, 1); current >= *requests {
+					break
+				}
 				buf := make([]byte, 10000)
 				req, err := http.NewRequest(http.MethodPost, *url+fmt.Sprintf("/%d", id), bytes.NewReader(buf))
 				if err != nil {
@@ -84,12 +94,19 @@ func startClient() {
 				res.Body.Close()
 
 				if res.StatusCode != http.StatusOK {
+					atomic.AddInt64(&non200count, 1)
 					fmt.Println(res.Status)
 				}
 			}
 		}(i)
 	}
 	wg.Wait()
+	if non200count == 0 {
+		fmt.Println("OK")
+	} else {
+		fmt.Println("FAILED:", "Non-200:", non200count)
+		os.Exit(2)
+	}
 }
 
 func main() {

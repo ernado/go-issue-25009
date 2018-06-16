@@ -5,5 +5,5 @@ https://github.com/golang/go/issues/25009
 ```bash
 $ git clone https://github.com/ernado/go-issue-25009.git
 $ cd go-issue-25009
-$ docker-compose up
+$ ./test.sh
 ```
