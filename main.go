@@ -65,7 +65,7 @@ func startClient() {
 	fmt.Printf("will do ~%d requests with %d concurrency\n", *requests, *jobs)
 	wg := new(sync.WaitGroup)
 	var count int64
-	var non200count int64
+	var failed int64
 	var cNetClient = newClient()
 	for i := 0; i < *jobs; i++ {
 		wg.Add(1)
@@ -86,6 +86,7 @@ func startClient() {
 				}
 				res, err := netClient.Do(req)
 				if err != nil {
+					atomic.AddInt64(&failed, 1)
 					fmt.Println("err", err)
 					continue
 				}
@@ -94,17 +95,17 @@ func startClient() {
 				res.Body.Close()
 
 				if res.StatusCode != http.StatusOK {
-					atomic.AddInt64(&non200count, 1)
+					atomic.AddInt64(&failed, 1)
 					fmt.Println(res.Status)
 				}
 			}
 		}(i)
 	}
 	wg.Wait()
-	if non200count == 0 {
+	if failed == 0 {
 		fmt.Println("OK")
 	} else {
-		fmt.Println("FAILED:", "Non-200:", non200count)
+		fmt.Println("FAILED:", failed)
 		os.Exit(2)
 	}
 }
