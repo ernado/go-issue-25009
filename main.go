@@ -79,7 +79,7 @@ func startClient() {
 				if current := atomic.AddInt64(&count, 1); current >= *requests {
 					break
 				}
-				buf := make([]byte, 10000)
+				buf := make([]byte, 100)
 				req, err := http.NewRequest(http.MethodPost, *url+fmt.Sprintf("/%d", id), bytes.NewReader(buf))
 				if err != nil {
 					log.Fatal(err)
