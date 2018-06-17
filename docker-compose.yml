@@ -21,5 +21,6 @@ services:
       - BODY
       - JOBS
       - REQUESTS
+      - GODEBUG
     depends_on:
       - nginx
