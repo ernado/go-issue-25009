@@ -8,12 +8,10 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"golang.org/x/net/http2"
 )
@@ -28,22 +26,13 @@ var (
 )
 
 func newClient() *http.Client {
-	var dialer = &net.Dialer{
-		Timeout: 10 * time.Second,
-	}
 	var netTransport = &http.Transport{
-		DialContext:         dialer.DialContext,
-		TLSHandshakeTimeout: 10 * time.Second,
-		MaxIdleConns:        20,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     60 * time.Second,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 	}
 	http2.ConfigureTransport(netTransport)
 	return &http.Client{
-		Timeout:   time.Second * 30,
 		Transport: netTransport,
 	}
 }
