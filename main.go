@@ -140,7 +140,7 @@ func main() {
 	flag.Bool("body", false, "set request.GetBody")
 	flag.Parse()
 	viper.SetDefault("http2_transport", false)
-	viper.SetDefault("tls_skip_verify", true)
+	viper.SetDefault("tls_skip_verify", false)
 	viper.AutomaticEnv()
 	viper.BindPFlags(flag.CommandLine)
 	if !viper.GetBool("client") {
