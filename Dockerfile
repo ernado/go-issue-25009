@@ -1,7 +1,7 @@
 FROM golang:latest
 
 # Adding our root CA to make self-signed SSL cert valid.
-ADD ca.crt /usr/local/share/ca-certificates
+ADD certs/ca.crt /usr/local/share/ca-certificates
 RUN update-ca-certificates
 
 RUN go get golang.org/x/net/http2 github.com/spf13/pflag github.com/spf13/viper
