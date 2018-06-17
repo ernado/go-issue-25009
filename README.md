@@ -20,3 +20,6 @@ $ ./test.sh
 # Example:
 $ REQUESTS=10 CONCURRENT=false ./test.sh
 ```
+
+For locally builded `go-issue-25009` binary use `test-bin.sh`
+and `docker-compose.bin.yml`.
