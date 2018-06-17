@@ -52,17 +52,18 @@ func startServer() {
 func startClient() {
 	fmt.Println("client to", *url)
 	fmt.Printf("will do ~%d requests with %d concurrency\n", *requests, *jobs)
-	wg := new(sync.WaitGroup)
-	var count int64
-	var failed int64
-	var cNetClient = newClient()
+	var (
+		wg = new(sync.WaitGroup)
+		c  = newClient()
+	)
+	var count, failed int64
 	for i := 0; i < *jobs; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			netClient := cNetClient
+			httpClient := c
 			if !*concurrent {
-				netClient = newClient()
+				httpClient = newClient()
 			}
 			for {
 				if current := atomic.AddInt64(&count, 1); current >= *requests {
@@ -73,7 +74,7 @@ func startClient() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				res, err := netClient.Do(req)
+				res, err := httpClient.Do(req)
 				if err != nil {
 					atomic.AddInt64(&failed, 1)
 					fmt.Println("err", err)
