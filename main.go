@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,16 +12,9 @@ import (
 	"sync"
 	"sync/atomic"
 
+	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"golang.org/x/net/http2"
-)
-
-var (
-	client     = flag.Bool("client", false, "client")
-	addr       = flag.String("addr", "0.0.0.0:80", "addr")
-	url        = flag.String("url", "https://nginx", "url")
-	concurrent = flag.Bool("concurrent", true, "use one client for all goroutines concurrently")
-	jobs       = flag.Int("j", 6, "number of concurrent requests")
-	requests   = flag.Int64("requests", 100, "number of total requests")
 )
 
 func newClient() *http.Client {
@@ -40,41 +32,60 @@ func newClient() *http.Client {
 }
 
 func startServer() {
-	fmt.Println("listening on", *addr)
+	fmt.Println("listening on", viper.GetString("addr"))
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		io.Copy(ioutil.Discard, request.Body)
 		request.Body.Close()
 		writer.WriteHeader(http.StatusOK)
 	})
-	if err := http.ListenAndServe(*addr, nil); err != nil {
+	if err := http.ListenAndServe(viper.GetString("addr"), nil); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func startClient() {
-	fmt.Println("client to", *url)
-	fmt.Printf("will do ~%d requests with %d concurrency\n", *requests, *jobs)
 	var (
-		wg = new(sync.WaitGroup)
-		c  = newClient()
+		url        = viper.GetString("url")
+		wg         = new(sync.WaitGroup)
+		c          = newClient()
+		jobs       = viper.GetInt("jobs")
+		request    = viper.GetInt64("requests")
+		concurrent = viper.GetBool("concurrent")
+		setGetBody = viper.GetBool("body")
 	)
+	fmt.Println("client to", url)
+	fmt.Printf("will do ~%d requests with %d concurrency\n", request, jobs)
+	if setGetBody {
+		fmt.Println("will set req.GetBody explicitly")
+	}
+	if concurrent {
+		fmt.Println("using one client for all goroutines")
+	} else {
+		fmt.Println("using separate client per goroutine")
+	}
 	var count, failed int64
-	for i := 0; i < *jobs; i++ {
+	for i := 0; i < jobs; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 			httpClient := c
-			if !*concurrent {
+			if !concurrent {
 				httpClient = newClient()
 			}
 			for {
-				if current := atomic.AddInt64(&count, 1); current >= *requests {
+				if current := atomic.AddInt64(&count, 1); current >= request {
 					break
 				}
 				buf := make([]byte, 100)
-				req, err := http.NewRequest(http.MethodPost, *url+fmt.Sprintf("/%d", id), bytes.NewReader(buf))
+				req, err := http.NewRequest(http.MethodPost, url+fmt.Sprintf("/%d", id), bytes.NewReader(buf))
 				if err != nil {
 					log.Fatal(err)
+				}
+				if setGetBody {
+					req.ContentLength = int64(len(buf))
+					req.GetBody = func() (io.ReadCloser, error) {
+						return ioutil.NopCloser(bytes.NewReader(buf)), nil
+					}
 				}
 				res, err := httpClient.Do(req)
 				if err != nil {
@@ -103,8 +114,17 @@ func startClient() {
 }
 
 func main() {
+	flag.Bool("client", false, "client")
+	flag.String("addr", "0.0.0.0:80", "addr")
+	flag.String("url", "https://nginx", "url")
+	flag.Bool("concurrent", true, "use one client for all goroutines concurrently")
+	flag.Int("jobs", 6, "number of concurrent requests")
+	flag.Int64("requests", 100, "number of total requests")
+	flag.Bool("body", false, "set request.GetBody")
 	flag.Parse()
-	if !*client {
+	viper.AutomaticEnv()
+	viper.BindPFlags(flag.CommandLine)
+	if !viper.GetBool("client") {
 		startServer()
 	}
 	startClient()

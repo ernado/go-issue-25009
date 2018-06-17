@@ -15,6 +15,11 @@ services:
 
   client:
     build: .
-    entrypoint: ["/go/bin/go-issue-25009", "-client"]
+    environment:
+      - CLIENT=1
+      - CONCURRENT
+      - BODY
+      - JOBS
+      - REQUESTS
     depends_on:
       - nginx
