@@ -29,6 +29,9 @@ func newClient() *http.Client {
 	c := &http.Client{
 		Transport: netTransport,
 	}
+	if !viper.GetBool("tls_skip_verify") {
+		c.Transport = http.DefaultTransport
+	}
 	if viper.GetBool("http2_transport") {
 		c.Transport = &http2.Transport{
 			TLSClientConfig: &tls.Config{
@@ -73,6 +76,9 @@ func startClient() {
 	}
 	if viper.GetBool("http2_transport") {
 		fmt.Println("using http2 transport directly")
+	}
+	if !viper.GetBool("tls_skip_verify") {
+		fmt.Println("using http.DefaultTransport without InsecureSkipVerify")
 	}
 	var count, failed int64
 	for i := 0; i < jobs; i++ {
@@ -134,6 +140,7 @@ func main() {
 	flag.Bool("body", false, "set request.GetBody")
 	flag.Parse()
 	viper.SetDefault("http2_transport", false)
+	viper.SetDefault("tls_skip_verify", true)
 	viper.AutomaticEnv()
 	viper.BindPFlags(flag.CommandLine)
 	if !viper.GetBool("client") {

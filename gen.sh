@@ -1,2 +1,5 @@
 #!/bin/bash
-openssl req -x509 -nodes -subj '/CN=nginx' -days 1000 -newkey rsa:4096 -sha256 -keyout nginx.key -out nginx.crt
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -key ca.key -out ca.crt
+openssl x509 -req -in nginx.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out nginx.crt
+cat nginx.crt ca.crt > nginx.bundle.crt
