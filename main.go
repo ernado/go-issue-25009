@@ -26,9 +26,17 @@ func newClient() *http.Client {
 	if err := http2.ConfigureTransport(netTransport); err != nil {
 		log.Fatalln("failed to configure http2:", err)
 	}
-	return &http.Client{
+	c := &http.Client{
 		Transport: netTransport,
 	}
+	if viper.GetBool("http2_transport") {
+		c.Transport = &http2.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+	return c
 }
 
 func startServer() {
@@ -62,6 +70,9 @@ func startClient() {
 		fmt.Println("using one client for all goroutines")
 	} else {
 		fmt.Println("using separate client per goroutine")
+	}
+	if viper.GetBool("http2_transport") {
+		fmt.Println("using http2 transport directly")
 	}
 	var count, failed int64
 	for i := 0; i < jobs; i++ {
@@ -122,6 +133,7 @@ func main() {
 	flag.Int64("requests", 100, "number of total requests")
 	flag.Bool("body", false, "set request.GetBody")
 	flag.Parse()
+	viper.SetDefault("http2_transport", false)
 	viper.AutomaticEnv()
 	viper.BindPFlags(flag.CommandLine)
 	if !viper.GetBool("client") {

@@ -22,5 +22,6 @@ services:
       - JOBS
       - REQUESTS
       - GODEBUG
+      - HTTP2_TRANSPORT
     depends_on:
       - nginx
