@@ -31,7 +31,9 @@ func newClient() *http.Client {
 			InsecureSkipVerify: true,
 		},
 	}
-	http2.ConfigureTransport(netTransport)
+	if err := http2.ConfigureTransport(netTransport); err != nil {
+		log.Fatalln("failed to configure http2:")
+	}
 	return &http.Client{
 		Transport: netTransport,
 	}
