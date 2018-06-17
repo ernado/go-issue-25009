@@ -32,7 +32,7 @@ func newClient() *http.Client {
 		},
 	}
 	if err := http2.ConfigureTransport(netTransport); err != nil {
-		log.Fatalln("failed to configure http2:")
+		log.Fatalln("failed to configure http2:", err)
 	}
 	return &http.Client{
 		Transport: netTransport,
