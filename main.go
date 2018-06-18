@@ -65,7 +65,7 @@ func startClient() {
 		setGetBody = viper.GetBool("body")
 	)
 	fmt.Println("client to", url)
-	fmt.Printf("will do ~%d requests with %d concurrency\n", request, jobs)
+	fmt.Printf("will do %d requests with %d concurrency\n", request, jobs)
 	if setGetBody {
 		fmt.Println("will set req.GetBody explicitly")
 	}
@@ -90,24 +90,25 @@ func startClient() {
 				httpClient = newClient()
 			}
 			for {
-				if current := atomic.AddInt64(&count, 1); current >= request {
+				current := atomic.AddInt64(&count, 1)
+				if current > request {
 					break
 				}
-				buf := make([]byte, 100)
-				req, err := http.NewRequest(http.MethodPost, url+fmt.Sprintf("/%d", id), bytes.NewReader(buf))
+				buf := make([]byte, 0, 100)
+				buf = append(buf, fmt.Sprintf("%05d", current)...)
+				req, err := http.NewRequest(http.MethodPost, url+fmt.Sprintf("/%02d/%03d", id, current), bytes.NewReader(buf))
 				if err != nil {
 					log.Fatal(err)
 				}
-				if setGetBody {
-					req.ContentLength = int64(len(buf))
-					req.GetBody = func() (io.ReadCloser, error) {
-						return ioutil.NopCloser(bytes.NewReader(buf)), nil
-					}
+				req.ContentLength = int64(len(buf))
+				req.GetBody = func() (io.ReadCloser, error) {
+					log.Printf("GetBody: %s", req.URL.Path)
+					return ioutil.NopCloser(bytes.NewReader(buf)), nil
 				}
 				res, err := httpClient.Do(req)
 				if err != nil {
 					atomic.AddInt64(&failed, 1)
-					fmt.Println("err", err)
+					log.Println("client: err", err)
 					continue
 				}
 				// Ensuring connection reuse.
@@ -116,7 +117,9 @@ func startClient() {
 
 				if res.StatusCode != http.StatusOK {
 					atomic.AddInt64(&failed, 1)
-					fmt.Println(res.Status)
+					log.Printf("client: failed: code=%d %03d", res.StatusCode, current)
+				} else {
+					log.Printf("client: ok: %03d", current)
 				}
 			}
 		}(i)
