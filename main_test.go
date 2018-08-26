@@ -212,3 +212,55 @@ func TestIssue25009(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestWithNginx(t *testing.T) {
+	go func() {
+		http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+			io.Copy(ioutil.Discard, request.Body)
+			request.Body.Close()
+			writer.WriteHeader(http.StatusOK)
+		})
+		if err := http.ListenAndServe("localhost:31001", nil); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	var (
+		wg     = new(sync.WaitGroup)
+		client = newClient()
+		count  int64
+	)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func(clientID int) {
+			defer wg.Done()
+			for {
+				current := atomic.AddInt64(&count, 1)
+				if current > 2 {
+					break
+				}
+				buf := new(bytes.Buffer)
+				fmt.Fprint(buf, current)
+				req, err := http.NewRequest(http.MethodPost,
+					fmt.Sprintf("https://go-issue-25009/client%02d/request%02d", clientID, current), buf,
+				)
+				if err != nil {
+					t.Error(err)
+					continue
+				}
+				res, err := client.Do(req)
+				if err != nil {
+					t.Errorf("client: %v", err)
+					continue
+				}
+				io.Copy(ioutil.Discard, res.Body)
+				res.Body.Close()
+				if res.StatusCode != http.StatusOK {
+					t.Errorf("client: failed: code=%d %03d", res.StatusCode, current)
+				} else {
+					t.Logf("client: ok: %03d", current)
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
+}
