@@ -58,6 +58,30 @@ qyUBnu3X9ps8ZfjLZO7BAkEAlT4R5Yl6cGhaJQYZHOde3JEMhNRcVFMO8dJDaFeo
 f9Oeos0UUothgiDktdQHxdNEwLjQf7lJJBzV+5OtwswCWA==
 -----END RSA PRIVATE KEY-----`)
 
+func getTLSConfig(t *testing.T) *tls.Config {
+	tlsCert, err := tls.X509KeyPair(localhostCert, localhostKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certificate, err := x509.ParseCertificate(tlsCert.Certificate[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPool := x509.NewCertPool()
+	certPool.AddCert(certificate)
+	return &tls.Config{
+		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+		NextProtos:   []string{http2.NextProtoTLS},
+		RootCAs:      certPool,
+		Certificates: []tls.Certificate{tlsCert},
+	}
+}
+
 func startTestServer(t *testing.T, listener net.Listener) {
 	var (
 		requestID  int
@@ -134,30 +158,6 @@ func startTestServer(t *testing.T, listener net.Listener) {
 				h2Conn.Close()
 			}
 		}()
-	}
-}
-
-func getTLSConfig(t *testing.T) *tls.Config {
-	tlsCert, err := tls.X509KeyPair(localhostCert, localhostKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certificate, err := x509.ParseCertificate(tlsCert.Certificate[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	certPool := x509.NewCertPool()
-	certPool.AddCert(certificate)
-	return &tls.Config{
-		MinVersion:               tls.VersionTLS12,
-		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		},
-		NextProtos:   []string{http2.NextProtoTLS},
-		RootCAs:      certPool,
-		Certificates: []tls.Certificate{tlsCert},
 	}
 }
 
