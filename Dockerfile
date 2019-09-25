@@ -1,4 +1,4 @@
-FROM golang:rc
+FROM golang:1.13
 
 # Adding our root CA to make self-signed SSL cert valid.
 ADD certs/ca.crt /usr/local/share/ca-certificates
