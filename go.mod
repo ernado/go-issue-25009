@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.2.2 // indirect
 	github.com/summerwind/h2spec v2.1.1+incompatible
 	golang.org/x/net v0.0.0-20180824152047-4bcd98cce591
-	golang.org/x/sys v0.0.0-20180824143301-4910a1d54f87 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.3.0 // indirect
 	gopkg.in/yaml.v2 v2.2.1 // indirect
 )
